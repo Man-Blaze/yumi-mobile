@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'rider_dashboard.dart';
+import 'customer_dashboard.dart'; // Make sure you created this file!
 
 void main() {
   runApp(const YumiExpressApp());
@@ -13,7 +14,7 @@ class YumiExpressApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'YumiExpress Rider',
+      title: 'YumiExpress',
       theme: ThemeData(
         primaryColor: const Color(0xFFFFD100),
         scaffoldBackgroundColor: const Color(0xFFFFD100),
@@ -33,11 +34,19 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _idController = TextEditingController(); // ADDED: Need National ID
   bool isLoading = false;
 
   Future<void> _login() async {
     final phone = _phoneController.text.trim();
-    if (phone.isEmpty) return;
+    final nationalId = _idController.text.trim();
+    
+    if (phone.isEmpty || nationalId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter Phone and National ID')),
+      );
+      return;
+    }
 
     setState(() => isLoading = true);
     final url = Uri.parse('http://127.0.0.1:1000/api/auth/login');
@@ -46,24 +55,51 @@ class _LoginScreenState extends State<LoginScreen> {
       final response = await http.post(
         url,
         headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"phoneNumber": phone, "password": "123"}), 
+        body: jsonEncode({
+          "phoneNumber": phone, 
+          "nationalId": nationalId
+        }), 
       );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        final token = data['token'];
-        final riderId = data['id'];
+        final role = data['role']; // CUSTOMER or RIDER
+        final userId = data['id'];
+        final fullName = data['fullName'];
 
-        if (mounted) {
+        if (!mounted) return;
+
+        // ROUTE THE USER BASED ON THEIR ROLE
+        if (role == 'CUSTOMER') {
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => RiderDashboard(riderId: int.parse(riderId), token: token)),
+            MaterialPageRoute(
+              builder: (context) => CustomerDashboard(
+                customerId: userId,
+                customerName: fullName,
+                area: data['area'] ?? 'Port Vila',
+              ),
+            ),
+          );
+        } else if (role == 'RIDER') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => RiderDashboard(
+                riderId: userId, 
+                token: "dummy-token" // Riders don't use tokens in this version
+              ),
+            ),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Admin must use the Web Portal.')),
           );
         }
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Login failed. Please check your phone number.')),
+            const SnackBar(content: Text('Login failed. Check Phone or National ID.')),
           );
         }
       }
@@ -94,8 +130,9 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text('YumiExpress', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
-              const Text('Rider Login', style: TextStyle(fontSize: 16, color: Colors.grey)),
               const SizedBox(height: 30),
+              
+              // PHONE FIELD
               TextField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
@@ -104,7 +141,18 @@ class _LoginScreenState extends State<LoginScreen> {
                   border: OutlineInputBorder(),
                 ),
               ),
+              const SizedBox(height: 15),
+              
+              // NATIONAL ID FIELD (Acts as password)
+              TextField(
+                controller: _idController,
+                decoration: const InputDecoration(
+                  labelText: 'National ID',
+                  border: OutlineInputBorder(),
+                ),
+              ),
               const SizedBox(height: 20),
+              
               ElevatedButton(
                 onPressed: isLoading ? null : _login,
                 style: ElevatedButton.styleFrom(

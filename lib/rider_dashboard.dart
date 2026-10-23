@@ -77,7 +77,11 @@ class _RiderDashboardState extends State<RiderDashboard> {
 
   double get _totalActiveWeight {
     return tasks
+<<<<<<< HEAD
         .where((t) => t['status'] == 'PICKED_UP')
+=======
+        .where((t) => t['status'] == 'ASSIGNED' || t['status'] == 'PICKED_UP')
+>>>>>>> 709820ef9f80b493d6fda640426b6567a9b31aec
         .fold(0.0, (sum, t) => sum + (t['weightInKg'] ?? 0));
   }
 
@@ -197,21 +201,33 @@ class _RiderDashboardState extends State<RiderDashboard> {
                               child: InkWell(
                                 onTap: () async {
                                   // B2C Flow: No Tracking ID -> Go to Weigh Cart
+<<<<<<< HEAD
                                                                     // B2C Flow: No Tracking ID -> Go to Weigh Cart
                                   if (task['status'] == 'ASSIGNED' && task['trackingId'] == null) {
                                     final result = await Navigator.push(
+=======
+                                  if (task['status'] == 'ASSIGNED' && task['trackingId'] == null) {
+                                    Navigator.push(
+>>>>>>> 709820ef9f80b493d6fda640426b6567a9b31aec
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) => WeighCartScreen(
                                           customerName: task['pickupAddress'],
                                           phone: task['recipientPhone'] ?? 'N/A',
                                           riderId: widget.riderId,
+<<<<<<< HEAD
                                           orderId: task['id'], // <--- MUST BE HERE
                                         ),
                                       ),
                                     );
                                     if (result == true) fetchTasks();
                                   }
+=======
+                                        ),
+                                      ),
+                                    ).then((_) => fetchTasks());
+                                  } 
+>>>>>>> 709820ef9f80b493d6fda640426b6567a9b31aec
                                   
                                   // B2B Flow: Has Tracking ID -> Mark as Loaded
                                   else if (task['status'] == 'ASSIGNED' && task['trackingId'] != null) {

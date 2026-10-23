@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart'; // ADDED FOR LOGOUT
+import 'main.dart'; // ADDED TO ROUTE TO LOGIN SCREEN
 import 'book_delivery_screen.dart';
 
 class CustomerDashboard extends StatefulWidget {
@@ -46,6 +48,22 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
     }
   }
 
+  // --- NEW LOGOUT FUNCTION ---
+  Future<void> _logout() async {
+    // 1. Wipe the saved memory
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.clear(); 
+    
+    // 2. Go back to Login Screen and remove all previous pages from history
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -55,7 +73,11 @@ class _CustomerDashboardState extends State<CustomerDashboard> {
         foregroundColor: const Color(0xFFFFD100),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: fetchOrders),
-          IconButton(icon: const Icon(Icons.logout), onPressed: () => Navigator.pop(context)),
+          // --- UPDATED LOGOUT BUTTON ---
+          IconButton(
+            icon: const Icon(Icons.logout), 
+            onPressed: _logout, // Calls the new function
+          ),
         ],
       ),
       body: Column(

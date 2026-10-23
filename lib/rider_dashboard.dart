@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:async';
+import 'package:shared_preferences/shared_preferences.dart'; // ADDED FOR LOGOUT
+import 'main.dart'; // ADDED TO ROUTE TO LOGIN SCREEN
 import 'weigh_cart_screen.dart';
 import 'sign_off_screen.dart';
 
@@ -77,11 +79,7 @@ class _RiderDashboardState extends State<RiderDashboard> {
 
   double get _totalActiveWeight {
     return tasks
-<<<<<<< HEAD
         .where((t) => t['status'] == 'PICKED_UP')
-=======
-        .where((t) => t['status'] == 'ASSIGNED' || t['status'] == 'PICKED_UP')
->>>>>>> 709820ef9f80b493d6fda640426b6567a9b31aec
         .fold(0.0, (sum, t) => sum + (t['weightInKg'] ?? 0));
   }
 
@@ -116,6 +114,20 @@ class _RiderDashboardState extends State<RiderDashboard> {
     );
   }
 
+  // --- NEW LOGOUT FUNCTION ---
+  Future<void> _logout() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.clear(); 
+    
+    if (mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const LoginScreen()),
+        (route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final nextStop = _nextStop;
@@ -131,10 +143,12 @@ class _RiderDashboardState extends State<RiderDashboard> {
             onSelected: (value) {
               if (value == 'stats') _showStatsDialog();
               if (value == 'refresh') { setState(() => isLoading = true); fetchTasks(); }
+              if (value == 'logout') _logout(); // <--- CALLS LOGOUT
             },
             itemBuilder: (context) => [
               const PopupMenuItem(value: 'stats', child: Text('My Stats')),
               const PopupMenuItem(value: 'refresh', child: Text('Refresh Tasks')),
+              const PopupMenuItem(value: 'logout', child: Text('Logout', style: TextStyle(color: Colors.red))), // <--- NEW MENU ITEM
             ],
           ),
         ],
@@ -143,7 +157,6 @@ class _RiderDashboardState extends State<RiderDashboard> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                // STATUS BANNER
                 Container(
                   padding: const EdgeInsets.all(20),
                   color: Colors.black,
@@ -162,14 +175,21 @@ class _RiderDashboardState extends State<RiderDashboard> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           const Text('CAPACITY', style: TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
-                          Text('${(15 - _totalActiveWeight).toStringAsFixed(1)} kg left', style: TextStyle(color: _totalActiveWeight > 15 ? Colors.red : Colors.green, fontSize: 16, fontWeight: FontWeight.bold)),
+                          Text(
+                            _totalActiveWeight > 15 
+                              ? "${_totalActiveWeight.toStringAsFixed(1)} kg (OVERWEIGHT)" 
+                              : "${(15 - _totalActiveWeight).toStringAsFixed(1)} kg left", 
+                            style: TextStyle(
+                              color: _totalActiveWeight > 15 ? Colors.red : Colors.green, 
+                              fontSize: 16, 
+                              fontWeight: FontWeight.bold
+                            )
+                          ),
                         ],
                       ),
                     ],
                   ),
                 ),
-
-                // NEXT STOP BANNER
                 if (nextStop != null)
                   Container(
                     padding: const EdgeInsets.all(15),
@@ -184,8 +204,6 @@ class _RiderDashboardState extends State<RiderDashboard> {
                       ],
                     ),
                   ),
-
-                // TASK LIST
                 Expanded(
                   child: tasks.isEmpty
                       ? const Center(child: Text('No tasks assigned yet.'))
@@ -200,47 +218,29 @@ class _RiderDashboardState extends State<RiderDashboard> {
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                               child: InkWell(
                                 onTap: () async {
-                                  // B2C Flow: No Tracking ID -> Go to Weigh Cart
-<<<<<<< HEAD
-                                                                    // B2C Flow: No Tracking ID -> Go to Weigh Cart
                                   if (task['status'] == 'ASSIGNED' && task['trackingId'] == null) {
                                     final result = await Navigator.push(
-=======
-                                  if (task['status'] == 'ASSIGNED' && task['trackingId'] == null) {
-                                    Navigator.push(
->>>>>>> 709820ef9f80b493d6fda640426b6567a9b31aec
                                       context,
                                       MaterialPageRoute(
                                         builder: (context) => WeighCartScreen(
                                           customerName: task['pickupAddress'],
                                           phone: task['recipientPhone'] ?? 'N/A',
                                           riderId: widget.riderId,
-<<<<<<< HEAD
-                                          orderId: task['id'], // <--- MUST BE HERE
+                                          orderId: task['id'],
                                         ),
                                       ),
                                     );
                                     if (result == true) fetchTasks();
-                                  }
-=======
-                                        ),
-                                      ),
-                                    ).then((_) => fetchTasks());
                                   } 
->>>>>>> 709820ef9f80b493d6fda640426b6567a9b31aec
-                                  
-                                  // B2B Flow: Has Tracking ID -> Mark as Loaded
                                   else if (task['status'] == 'ASSIGNED' && task['trackingId'] != null) {
-                                    // Call the backend to mark it as PICKED_UP
                                     final url = Uri.parse('http://127.0.0.1:1000/rider/update-status/${task['id']}?status=PICKED_UP');
                                     await http.get(url).then((_) {
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         const SnackBar(content: Text('✅ B2B Parcel Loaded into Bag!')),
                                       );
-                                      fetchTasks(); // Refresh the list
+                                      fetchTasks();
                                     });
                                   }
-                                  // NEW: PICKED_UP Flow -> Go to Sign-Off Screen
                                   else if (task['status'] == 'PICKED_UP') {
                                     Navigator.push(
                                       context,
@@ -262,7 +262,7 @@ class _RiderDashboardState extends State<RiderDashboard> {
                                       Text('Order #${task['id']}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                                       const SizedBox(height: 5),
                                       Text('Customer: ${task['pickupAddress']}'),
-                                      Text('Meet At: ${task['exactPickupLocation']}'),
+                                      Text('Meet At: ${task['exactPickupLocation'] ?? 'No details'}'),
                                       Text('Recipient: ${task['recipientPhone'] ?? 'N/A'}'),
                                       const SizedBox(height: 10),
                                       Container(
